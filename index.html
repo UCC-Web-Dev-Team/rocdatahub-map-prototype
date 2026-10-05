@@ -59,6 +59,10 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .stat.on { border-top-color: var(--accent); }
 .stat b { display: block; font: 500 17px var(--mono); }
 .stat span { color: var(--muted); font-size: 12px; }
+.stat .km { display: block; font: 500 13px var(--mono); color: var(--fg); margin-top: 2px; }
+.summary { margin: 10px 0 0; font-size: 13px; }
+.summary dt { color: var(--muted); font-size: 12px; }
+.summary dd { margin: 0 0 6px; font-variant-numeric: tabular-nums; }
 .legend { display: grid; gap: 6px; font-size: 13px; }
 .key { display: flex; align-items: center; gap: 8px; }
 .sw { width: 14px; height: 14px; border-radius: 2px; flex: none; }
@@ -103,8 +107,9 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
     </section>
 
     <section>
-      <p class="label">Flooded grid cells in <span id="country-name">…</span></p>
+      <p class="label">Flooded in <span id="country-name">…</span></p>
       <div class="stats" id="stats"></div>
+      <dl class="summary" id="summary"></dl>
       <p class="perf" id="perf" aria-live="polite">Loading…</p>
     </section>
 
@@ -122,7 +127,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
       <label class="toggle"><input type="checkbox" id="show-odd"> <span>Outline cells whose flags do not nest<small>Flooded at a lower rise but not a higher one (236 of 268 are in Liberia)</small></span></label>
     </section>
 
-    <p class="note">Each scenario shows exactly the cells its own flag marks, as the plan decided. <span id="basemap-note">Checking whether OpenStreetMap tiles can load here…</span> Built from <code>GIS_Data_test.rar</code> by <code>.scratch/arcgis-retirement/poc/build_poc_data.py</code>. Plan: <a href="https://claude.ai/code/artifact/b3cdaf48-9aba-42e2-90eb-14c40b927cdd" target="_blank" rel="noopener">Retiring ArcGIS</a>.</p>
+    <p class="note">Each scenario shows exactly the cells its own flag marks, as the plan decided. Areas are measured from each cell's shape on the globe; the export's own area field is in Web Mercator units, which overstate it. <span id="basemap-note">Checking whether OpenStreetMap tiles can load here…</span> Built from <code>GIS_Data_test.rar</code> by <code>.scratch/arcgis-retirement/poc/build_poc_data.py</code>. Plan: <a href="https://claude.ai/code/artifact/b3cdaf48-9aba-42e2-90eb-14c40b927cdd" target="_blank" rel="noopener">Retiring ArcGIS</a>.</p>
   </aside>
   <div id="map" role="region" aria-label="Map of flooded coastal grid cells"></div>
 </div>
@@ -154,6 +159,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
     const yes = v => v ? 'floods' : 'dry';
     return `<h3>${esc(p.district)}</h3><dl><dt>Region</dt><dd>${esc(p.region)}</dd>
       <dt>1 m rise</dt><dd>${yes(p.floods_1m)}</dd><dt>2 m rise</dt><dd>${yes(p.floods_2m)}</dd><dt>3 m rise</dt><dd>${yes(p.floods_3m)}</dd>
+      <dt>Cell area</dt><dd>${p.area_km2.toLocaleString('en-US', { maximumFractionDigits: 2 })} km\u00b2</dd>
       <dt>Flags</dt><dd>${p.nests ? 'nest' : '<strong>do not nest</strong>'}</dd></dl>`;
   }
 
@@ -201,7 +207,12 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
   function renderStats() {
     const c = index.find(x => x.slug === state.country);
     $('country-name').textContent = c.name;
-    $('stats').innerHTML = [1, 2, 3].map(m => `<div class="stat${m === state.m ? ' on' : ''}"><b>${fmt(c.cells[m + 'm'])}</b><span>at ${m} m</span></div>`).join('');
+    const km = v => `${v.toLocaleString('en-US', { maximumFractionDigits: 1 })} km\u00b2`;
+    $('stats').innerHTML = [1, 2, 3].map(m => `<div class="stat${m === state.m ? ' on' : ''}"><b>${fmt(c.cells[m + 'm'])}</b><span>cells at ${m} m</span><span class="km">${Math.round(c.scenarios[m + 'm'].area_km2).toLocaleString('en-US')} km\u00b2</span></div>`).join('');
+    const s = c.scenarios[state.m + 'm'], top = s.top_district;
+    $('summary').innerHTML = `<dt>Reach at ${state.m} m</dt><dd>${fmt(s.districts)} district${s.districts === 1 ? '' : 's'} in ${fmt(s.regions)} region${s.regions === 1 ? '' : 's'}</dd>`
+      + (top ? `<dt>Most flooded district</dt><dd>${esc(top.name)}, ${esc(top.region)}: ${km(top.area_km2)} (${Math.round(top.area_km2 / s.area_km2 * 100)}% of the country's flooded area)</dd>` : '')
+      + (c.non_nesting ? `<dt>Cells whose flags do not nest</dt><dd>${fmt(c.non_nesting)}</dd>` : '');
   }
 
   async function loadCountry(slug, fit) {
