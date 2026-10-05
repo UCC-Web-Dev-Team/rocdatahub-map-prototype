@@ -7,5 +7,6 @@ plain GeoJSON files and drawn with Leaflet on OpenStreetMap tiles. Nothing loads
 Live: https://ucc-web-dev-team.github.io/rocdatahub-map-prototype/
 
 Generated, not hand-edited: `data/` and `index.html` come from
-`.scratch/arcgis-retirement/poc/` in the rocdatahub repo (`build_poc_data.py`, `index.src.html`).
+`.scratch/arcgis-retirement/poc/` in the rocdatahub repo (`build_poc_data.py`, `index.src.html`,
+published by `publish_pages.py`).
 Map data (c) OpenStreetMap contributors; borders fallback from Natural Earth (public domain).
